@@ -168,9 +168,9 @@ impl Board {
                 (del, ty, dist as i32)
             })
             .flat_map(move |(del, ty, dist)| {
-                let mut captures = false;
+                let mut no_captures = true;
 
-                (1..dist)
+                (1..=dist)
                     .flat_map(move |dist| Pos::try_from(pos + del * dist))
                     .map(move |pos| {
                         let victim = self.board.get(pos).ok();
@@ -200,9 +200,9 @@ impl Board {
                         (diff, victim)
                     })
                     .take_while(move |(_, victim)| {
-                        let cap = captures;
-                        captures = victim.is_some();
-                        cap
+                        let no_cap = no_captures;
+                        no_captures = victim.is_none();
+                        no_cap
                     })
                     .flat_map(move |(diff, _)| diff)
                     .fuse()
