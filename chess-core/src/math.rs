@@ -1,17 +1,14 @@
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Vector {
     pub x: i32,
-    pub y: i32
+    pub y: i32,
 }
 
 impl Vector {
     pub fn zero() -> Self {
-        Vector {
-            x: 0,
-            y: 0
-        }
+        Vector { x: 0, y: 0 }
     }
 }
 
@@ -23,7 +20,7 @@ impl Default for Vector {
 
 impl Add for Vector {
     type Output = Self;
-    
+
     fn add(mut self, Vector { x, y }: Self) -> Self {
         self.x += x;
         self.y += y;
@@ -33,7 +30,7 @@ impl Add for Vector {
 
 impl Sub for Vector {
     type Output = Self;
-    
+
     fn sub(mut self, Vector { x, y }: Self) -> Self {
         self.x -= x;
         self.y -= y;

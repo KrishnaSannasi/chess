@@ -3,7 +3,7 @@ pub struct OutOfBounds;
 
 pub enum Error {
     OutOfBounds,
-    NoPiece
+    NoPiece,
 }
 
 impl From<OutOfBounds> for Error {

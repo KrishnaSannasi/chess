@@ -13,14 +13,14 @@ pub enum Piece {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Color {
     Black,
-    White
+    White,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MoveType {
     Move,
     Capture,
-    MoveCapture
+    MoveCapture,
 }
 
 /**
@@ -28,7 +28,12 @@ pub enum MoveType {
  * (a move that is legal if there are no other rules to prevent the move)
  */
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct VMove(pub(crate) Piece, pub(crate) Vector, pub(crate) MoveType, pub(crate) u32);
+pub struct VMove(
+    pub(crate) Piece,
+    pub(crate) Vector,
+    pub(crate) MoveType,
+    pub(crate) u32,
+);
 
 impl Piece {
     pub fn get_ident(self) -> char {
@@ -164,14 +169,14 @@ impl MoveType {
     pub fn is_capture(self) -> bool {
         match self {
             MoveType::Move => false,
-            _ => true
+            _ => true,
         }
     }
 
     pub fn is_normal(self) -> bool {
         match self {
             MoveType::Capture => false,
-            _ => true
+            _ => true,
         }
     }
 }
