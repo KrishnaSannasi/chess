@@ -118,7 +118,16 @@ impl Board {
         board.set(Pos(3, 7), PieceType::Queen, Color::Black);
         board.set(Pos(4, 7), PieceType::King, Color::Black);
 
+        for i in 0..8 {
+            board.set(Pos(i, 1), PieceType::Pawn, Color::White);
+            board.set(Pos(i, 6), PieceType::Pawn, Color::Black);
+        }
+
         Self { board }
+    }
+
+    pub fn get(&self, pos: Pos) -> Result<Piece, Error> {
+        self.board.get(pos)
     }
 
     pub fn get_possible_moves(&self, pos: Pos) -> Option<Vec<Diff>> {
