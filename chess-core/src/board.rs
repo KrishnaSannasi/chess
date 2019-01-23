@@ -152,7 +152,7 @@ impl Board {
     }
 
     /**
-     * gets all possible moves, uses a closure to handle the case of a `King`
+     * gets all possible moves, don't check if the king will be put in check
      */
     #[allow(clippy::single_match)]
     pub fn get_possible_moves_unchecked<'a>(&'a self, pos: Pos) -> Option<impl 'a + Iterator<Item = Diff>> {
@@ -299,5 +299,57 @@ mod fmt {
 
             Ok(())
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::board::*;
+
+    macro_rules! pos {
+        ($x:expr, $y:expr) => { Pos::new_unchecked($x, $y) };
+    }
+
+    macro_rules! poss_move_u {
+        ($board:expr, $x:expr, $y:expr) => { $board.get_possible_moves_unchecked(pos!($x, $y)).unwrap().collect::<Vec<_>>() };
+    }
+
+    #[test]
+    fn gpmu_pass_1() {
+        let board = Board::new();
+
+        let moves = poss_move_u!(board, 0, 1);
+
+        assert_eq!(moves.len(), 2);
+        assert!(moves.contains(&Diff { ty: DiffType::Move, from: pos!(0, 1), to: pos!(0, 2) }));
+        assert!(moves.contains(&Diff { ty: DiffType::Move, from: pos!(0, 1), to: pos!(0, 3) }));
+    }
+
+    #[test]
+    fn gpmu_pass_2() {
+        let board = Board::new();
+
+        let moves = poss_move_u!(board, 1, 0);
+
+        assert_eq!(moves.len(), 2);
+        assert!(moves.contains(&Diff { ty: DiffType::Move, from: pos!(1, 0), to: pos!(0, 2) }));
+        assert!(moves.contains(&Diff { ty: DiffType::Move, from: pos!(1, 0), to: pos!(2, 2) }));
+    }
+
+    #[test]
+    fn gpmu_pass_3() {
+        let board = Board::new();
+
+        let moves = poss_move_u!(board, 0, 0);
+        assert!(moves.is_empty());
+
+        let moves = poss_move_u!(board, 2, 0);
+        assert!(moves.is_empty());
+
+        let moves = poss_move_u!(board, 3, 0);
+        assert!(moves.is_empty());
+
+        let moves = poss_move_u!(board, 4, 0);
+        assert!(moves.is_empty());
     }
 }
