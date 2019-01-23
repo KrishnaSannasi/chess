@@ -50,19 +50,19 @@ impl Pos {
 
 impl RawBoard {
     fn set(&mut self, Pos(x, y): Pos, piece: PieceType, color: Color) {
-        self.data[x][y] = Some((piece, color));
+        self.data[y][x] = Some((piece, color));
     }
 
     fn replace(&mut self, Pos(x, y): Pos, piece: Option<Piece>) -> Option<Piece> {
-        std::mem::replace(&mut self.data[x][y], piece)
+        std::mem::replace(&mut self.data[y][x], piece)
     }
 
     fn remove(&mut self, Pos(x, y): Pos) -> Option<Piece> {
-        self.data[x][y].take()
+        self.data[y][x].take()
     }
 
     fn get(&self, Pos(x, y): Pos) -> Result<Piece, Error> {
-        self.data[x][y].ok_or(Error::NoPiece)
+        self.data[y][x].ok_or(Error::NoPiece)
     }
 
     pub fn iter<'a>(&'a self) -> impl 'a + Iterator<Item = (Pos, PieceType, Color)> {
@@ -227,10 +227,10 @@ mod fmt {
 
     impl fmt::Debug for Board {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            for col in &self.board.data {
+            for col in self.board.data.iter().rev() {
                 for &tile in col {
                     match tile {
-                        Some((pt, _)) => write!(f, "{}_ ", pt.get_ident())?,
+                        Some((pt, _)) => write!(f, "{}. ", pt.get_ident())?,
                         None => write!(f, "__ ")?
                     }
                 }
@@ -239,7 +239,7 @@ mod fmt {
 
                 for &tile in col {
                     match tile {
-                        Some((_, color)) => write!(f, "_{} ", color.get_ident())?,
+                        Some((_, color)) => write!(f, ".{} ", color.get_ident())?,
                         None => write!(f, "__ ")?
                     }
                 }
