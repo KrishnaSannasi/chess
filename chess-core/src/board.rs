@@ -209,12 +209,22 @@ impl Board {
         Some(moves)
     }
 
-    pub fn apply(&mut self, Diff { ty, from, to }: Diff) {
+    pub fn apply(&mut self, Diff { ty, from, to }: Diff) -> Result<(), Error> {
         match ty {
-            DiffType::Move => {}
+            DiffType::Move => {
+                let (piece, color) = self.board.remove(from).ok_or(Error::NoPiece)?;
+                
+                if self.board.get(to).is_ok() {
+                    Err(InvalidDiff::CaptureOnMoveTy)?;
+                }
+
+                self.board.set(to, piece, color);
+            }
             DiffType::Capture { cap } => {}
             DiffType::Promote { piece } => {}
         }
+
+        Ok(())
     }
 
     fn is_king_check(&self, color: Color) -> bool {
