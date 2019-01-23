@@ -1,7 +1,7 @@
 use crate::math::Vector;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PieceType {
+pub enum Piece {
     King,
     Queen,
     Rook,
@@ -10,7 +10,8 @@ pub enum PieceType {
     Pawn,
 }
 
-pub struct Piece {
-    pub ty: PieceType,
-    pub pos: Vector
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Color {
+    Black,
+    White
 }
