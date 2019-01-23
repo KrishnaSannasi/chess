@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub struct OutOfBounds;
 
+#[derive(Debug)]
 pub enum InvalidDiff {
     /// Tried to capture, when type of move is MoveType::Move
     CaptureOnMoveTy,
