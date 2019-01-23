@@ -159,3 +159,19 @@ impl Color {
         }
     }
 }
+
+impl MoveType {
+    pub fn is_capture(self) -> bool {
+        match self {
+            MoveType::Move => false,
+            _ => true
+        }
+    }
+
+    pub fn is_normal(self) -> bool {
+        match self {
+            MoveType::Capture => false,
+            _ => true
+        }
+    }
+}
