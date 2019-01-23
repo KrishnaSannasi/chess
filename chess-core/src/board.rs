@@ -220,3 +220,34 @@ impl Default for Board {
         Self::new()
     }
 }
+
+mod fmt {
+    use super::*;
+    use std::fmt;
+
+    impl fmt::Debug for Board {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            for col in &self.board.data {
+                for &tile in col {
+                    match tile {
+                        Some((pt, _)) => write!(f, "{}_ ", pt.get_ident())?,
+                        None => write!(f, "__ ")?
+                    }
+                }
+                
+                writeln!(f)?;
+
+                for &tile in col {
+                    match tile {
+                        Some((_, color)) => write!(f, "_{} ", color.get_ident())?,
+                        None => write!(f, "__ ")?
+                    }
+                }
+
+                writeln!(f)?;
+            }
+
+            Ok(())
+        }
+    }
+}
