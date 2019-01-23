@@ -191,11 +191,10 @@ impl Board {
 
         match pt {
             PieceType::Pawn => {
-                // TODO: Handle en-passent
-                // TODO: Handle promotion
+                
             },
             PieceType::King => {
-                // TODO: Handle castling
+                
             },
             _ => () // intentionally unimplemented, other pieces don't need special casing
         }
