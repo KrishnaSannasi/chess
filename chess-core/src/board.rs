@@ -13,10 +13,17 @@ pub struct RawBoard {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Diff {
-    Promote(Pos, Piece),
-    Move { from: Pos, to: Pos },
-    Capture { from: Pos, to: Pos, cap: Pos },
+pub enum DiffType {
+    Promote { piece: Piece },
+    Capture { cap: Pos },
+    Move,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Diff {
+    ty: DiffType,
+    from: Pos,
+    to: Pos
 }
 
 impl Pos {
@@ -161,16 +168,19 @@ impl Board {
 
                         let diff = if let Some((_, v_color)) = victim {
                             if ty.is_capture() && v_color != color {
-                                Some(Diff::Capture {
+                                Some(Diff {
                                     from: old_pos,
                                     to: pos,
-                                    cap: pos,
+                                    ty: DiffType::Capture {
+                                        cap: pos
+                                    }
                                 })
                             } else {
                                 None
                             }
                         } else if ty.is_normal() {
-                            Some(Diff::Move {
+                            Some(Diff {
+                                ty: DiffType::Move,
                                 from: old_pos,
                                 to: pos,
                             })
@@ -199,7 +209,13 @@ impl Board {
         Some(moves)
     }
 
-    pub fn apply(&mut self, diff: Diff) {}
+    pub fn apply(&mut self, Diff { ty, from, to }: Diff) {
+        match ty {
+            DiffType::Move => {}
+            DiffType::Capture { cap } => {}
+            DiffType::Promote { piece } => {}
+        }
+    }
 
     fn is_king_check(&self, color: Color) -> bool {
         false
