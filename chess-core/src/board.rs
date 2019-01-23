@@ -14,7 +14,7 @@ pub struct RawBoard {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DiffType {
-    Promote { piece: Piece },
+    Promote { piece: PieceType },
     Capture { cap: Pos },
     Move,
 }
@@ -229,7 +229,24 @@ impl Board {
                 
                 self.board.set(to, piece, color);
             }
-            DiffType::Promote { piece } => {}
+            DiffType::Promote { piece } => {
+                match self.board.replace(from, None) {
+                    Some((PieceType::Pawn, color)) => {
+                        let row = (1 - color.dir()) / 2 * 5 + 1; // choose 1 and 6
+                        let prom = (1 - color.dir()) / 2 * 8; // choose 0 and 8
+
+                        let from = from.into();
+                        let v_to = to.into();
+                        if from.y == row && v_to.y == prom {
+                            self.board.set(to, piece, color)
+                        } else {
+                            Err(InvalidDiff::InvalidPromotionRow)?
+                        }
+                    },
+                    Some(_) => Err(InvalidDiff::InvalidPromotionPiece)?,
+                    None => Err(Error::NoPiece)?
+                }
+            }
         }
 
         Ok(())
