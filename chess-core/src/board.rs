@@ -220,7 +220,15 @@ impl Board {
 
                 self.board.set(to, piece, color);
             }
-            DiffType::Capture { cap } => {}
+            DiffType::Capture { cap } => {
+                let (piece, color) = self.board.remove(from).ok_or(Error::NoPiece)?;
+                
+                if self.board.replace(cap, None).is_none() {
+                    Err(InvalidDiff::MoveOnCaptureTy)?;
+                }
+                
+                self.board.set(to, piece, color);
+            }
             DiffType::Promote { piece } => {}
         }
 
