@@ -1,4 +1,4 @@
-use crate::pieces::{Piece as PieceType, Color};
+use crate::pieces::{Piece as PieceType, Color, VMove};
 use crate::math::Vector;
 use crate::error::*;
 
@@ -12,11 +12,11 @@ pub struct RawBoard {
     data: [[Option<Piece>; 8]; 8]
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Diff {
     Promote(Pos, Piece),
-    Add(Pos, Piece),
-    Move(Pos, Pos),
-    Rem(Pos),
+    Move { from: Pos, to: Pos },
+    Capture { from: Pos, to: Pos, cap: Pos }
 }
 
 impl Pos {
@@ -126,5 +126,94 @@ impl Board {
         board.set(Pos(4, 7), PieceType::King, Color::Black);
 
         Self { board }
+    }
+
+    pub fn get_possible_moves(&self, pos: Pos) -> Option<Vec<Diff>> {
+        let (_, color) = self.board.get(pos).ok()?;
+
+        let mut diffs = self.get_possible_moves_unchecked(pos);
+
+        if let Some(diffs) = &mut diffs {
+            diffs.retain(move |&x| {
+                let mut temp = Self { board: self.board };
+                temp.apply(x);
+                !temp.is_king_check(color)
+            });
+        }
+
+        diffs
+    }
+
+    /**
+     * gets all possible moves, uses a closure to handle the case of a `King`
+     */
+    #[allow(clippy::single_match)]
+    pub fn get_possible_moves_unchecked(&self, pos: Pos) -> Option<Vec<Diff>> {
+        let mut moves = Vec::new();
+
+        let (pt, color) = self.board.get(pos).ok()?;
+        let old_pos = pos;
+        let pos = pos.into();
+        let dir = color.dir();
+
+        for &VMove(_, del, ty, dist) in pt.get_moves() {
+            let del = del * dir;
+            let mut captures = false;
+
+            moves.extend((1..dist as i32)
+                .flat_map(move |dist| Pos::try_from(pos + del * dist))
+                .map(move |pos| {
+                    let victim = self.board.get(pos).ok();
+
+                    let diff = if let Some((_, v_color)) = victim {
+                        if ty.is_capture() && v_color != color {
+                            Some(Diff::Capture { from: old_pos, to: pos, cap: pos })
+                        } else {
+                            None
+                        }
+                    } else if ty.is_normal() {
+                        Some(Diff::Move { from: old_pos, to: pos })
+                    } else {
+                        None
+                    };
+
+                    (diff, victim)
+                })
+                .take_while(move |(_, victim)| {
+                    let cap = captures;
+                    captures = victim.is_some();
+                    cap
+                })
+                .flat_map(move |(diff, _)| diff)
+                .fuse()
+            )
+        }
+
+        match pt {
+            PieceType::Pawn => {
+                // TODO: Handle en-passent
+                // TODO: Handle promotion
+            },
+            PieceType::King => {
+                // TODO: Handle castling
+            },
+            _ => () // intentionally unimplemented, other pieces don't need special casing
+        }
+
+        Some(moves)
+    }
+
+    pub fn apply(&mut self, diff: Diff) {
+
+    }
+
+    fn is_king_check(&self, color: Color) -> bool {
+        false
+    }
+}
+
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
     }
 }
