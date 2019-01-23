@@ -1,6 +1,7 @@
 #[derive(Debug)]
 pub struct OutOfBounds;
 
+#[derive(Debug)]
 pub enum Error {
     OutOfBounds,
     NoPiece,
