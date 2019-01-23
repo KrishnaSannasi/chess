@@ -13,10 +13,17 @@ pub struct RawBoard {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Diff {
-    Promote(Pos, Piece),
-    Move { from: Pos, to: Pos },
-    Capture { from: Pos, to: Pos, cap: Pos },
+pub enum DiffType {
+    Promote { piece: PieceType },
+    Capture { cap: Pos },
+    Move,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Diff {
+    ty: DiffType,
+    from: Pos,
+    to: Pos
 }
 
 impl Pos {
@@ -170,16 +177,19 @@ impl Board {
 
                         let diff = if let Some((_, v_color)) = victim {
                             if ty.is_capture() && v_color != color {
-                                Some(Diff::Capture {
+                                Some(Diff {
                                     from: old_pos,
                                     to: pos,
-                                    cap: pos,
+                                    ty: DiffType::Capture {
+                                        cap: pos
+                                    }
                                 })
                             } else {
                                 None
                             }
                         } else if ty.is_normal() {
-                            Some(Diff::Move {
+                            Some(Diff {
+                                ty: DiffType::Move,
                                 from: old_pos,
                                 to: pos,
                             })
@@ -208,7 +218,48 @@ impl Board {
         Some(moves)
     }
 
-    pub fn apply(&mut self, diff: Diff) {}
+    pub fn apply(&mut self, Diff { ty, from, to }: Diff) -> Result<(), Error> {
+        match ty {
+            DiffType::Move => {
+                let (piece, color) = self.board.remove(from).ok_or(Error::NoPiece)?;
+                
+                if self.board.get(to).is_ok() {
+                    Err(InvalidDiff::CaptureOnMoveTy)?;
+                }
+
+                self.board.set(to, piece, color);
+            }
+            DiffType::Capture { cap } => {
+                let (piece, color) = self.board.remove(from).ok_or(Error::NoPiece)?;
+                
+                if self.board.replace(cap, None).is_none() {
+                    Err(InvalidDiff::MoveOnCaptureTy)?;
+                }
+                
+                self.board.set(to, piece, color);
+            }
+            DiffType::Promote { piece } => {
+                match self.board.replace(from, None) {
+                    Some((PieceType::Pawn, color)) => {
+                        let row = (1 - color.dir()) / 2 * 5 + 1; // choose 1 and 6
+                        let prom = (1 - color.dir()) / 2 * 8; // choose 0 and 8
+
+                        let from = from.into();
+                        let v_to = to.into();
+                        if from.y == row && v_to.y == prom {
+                            self.board.set(to, piece, color)
+                        } else {
+                            Err(InvalidDiff::InvalidPromotionRow)?
+                        }
+                    },
+                    Some(_) => Err(InvalidDiff::InvalidPromotionPiece)?,
+                    None => Err(Error::NoPiece)?
+                }
+            }
+        }
+
+        Ok(())
+    }
 
     fn is_king_check(&self, color: Color) -> bool {
         false
