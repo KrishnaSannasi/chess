@@ -12,6 +12,7 @@ pub enum InvalidDiff {
     InvalidPromotionRow,
 }
 
+#[derive(Debug)]
 pub enum Error {
     InvalidDiff(InvalidDiff),
     OutOfBounds,

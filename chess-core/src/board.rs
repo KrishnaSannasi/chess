@@ -57,19 +57,19 @@ impl Pos {
 
 impl RawBoard {
     fn set(&mut self, Pos(x, y): Pos, piece: PieceType, color: Color) {
-        self.data[x][y] = Some((piece, color));
+        self.data[y][x] = Some((piece, color));
     }
 
     fn replace(&mut self, Pos(x, y): Pos, piece: Option<Piece>) -> Option<Piece> {
-        std::mem::replace(&mut self.data[x][y], piece)
+        std::mem::replace(&mut self.data[y][x], piece)
     }
 
     fn remove(&mut self, Pos(x, y): Pos) -> Option<Piece> {
-        self.data[x][y].take()
+        self.data[y][x].take()
     }
 
     fn get(&self, Pos(x, y): Pos) -> Result<Piece, Error> {
-        self.data[x][y].ok_or(Error::NoPiece)
+        self.data[y][x].ok_or(Error::NoPiece)
     }
 
     pub fn iter<'a>(&'a self) -> impl 'a + Iterator<Item = (Pos, PieceType, Color)> {
@@ -125,7 +125,16 @@ impl Board {
         board.set(Pos(3, 7), PieceType::Queen, Color::Black);
         board.set(Pos(4, 7), PieceType::King, Color::Black);
 
+        for i in 0..8 {
+            board.set(Pos(i, 1), PieceType::Pawn, Color::White);
+            board.set(Pos(i, 6), PieceType::Pawn, Color::Black);
+        }
+
         Self { board }
+    }
+
+    pub fn get(&self, pos: Pos) -> Result<Piece, Error> {
+        self.board.get(pos)
     }
 
     pub fn get_possible_moves(&self, pos: Pos) -> Option<Vec<Diff>> {
@@ -260,5 +269,36 @@ impl Board {
 impl Default for Board {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+mod fmt {
+    use super::*;
+    use std::fmt;
+
+    impl fmt::Debug for Board {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            for col in self.board.data.iter().rev() {
+                for &tile in col {
+                    match tile {
+                        Some((pt, _)) => write!(f, "{}. ", pt.get_ident())?,
+                        None => write!(f, "__ ")?
+                    }
+                }
+                
+                writeln!(f)?;
+
+                for &tile in col {
+                    match tile {
+                        Some((_, color)) => write!(f, ".{} ", color.get_ident())?,
+                        None => write!(f, "__ ")?
+                    }
+                }
+
+                writeln!(f)?;
+            }
+
+            Ok(())
+        }
     }
 }
