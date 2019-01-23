@@ -137,40 +137,40 @@ impl Board {
         self.board.get(pos)
     }
 
-    pub fn get_possible_moves(&self, pos: Pos) -> Option<Vec<Diff>> {
+    pub fn get_possible_moves<'a>(&'a self, pos: Pos) -> Option<impl 'a + Iterator<Item = Diff>> {
         let (_, color) = self.board.get(pos).ok()?;
 
-        let mut diffs = self.get_possible_moves_unchecked(pos);
+        let diffs = self.get_possible_moves_unchecked(pos);
 
-        if let Some(diffs) = &mut diffs {
-            diffs.retain(move |&x| {
+        diffs.map(move |diffs| {
+            diffs.filter(move |&x| {
                 let mut temp = Self { board: self.board };
-                temp.apply(x);
+                temp.apply(x).unwrap();
                 !temp.is_king_check(color)
-            });
-        }
-
-        diffs
+            })
+        })
     }
 
     /**
      * gets all possible moves, uses a closure to handle the case of a `King`
      */
     #[allow(clippy::single_match)]
-    pub fn get_possible_moves_unchecked(&self, pos: Pos) -> Option<Vec<Diff>> {
-        let mut moves = Vec::new();
-
+    pub fn get_possible_moves_unchecked<'a>(&'a self, pos: Pos) -> Option<impl 'a + Iterator<Item = Diff>> {
         let (pt, color) = self.board.get(pos).ok()?;
         let old_pos = pos;
         let pos = pos.into();
         let dir = color.dir();
 
-        for &VMove(_, del, ty, dist) in pt.get_moves() {
-            let del = del * dir;
-            let mut captures = false;
+        let moves = pt.get_moves();
+        let moves = moves.iter()
+            .map(move |&VMove(_, del, ty, dist)| {
+                let del = del * dir;
+                (del, ty, dist as i32)
+            })
+            .flat_map(move |(del, ty, dist)| {
+                let mut captures = false;
 
-            moves.extend(
-                (1..dist as i32)
+                (1..dist)
                     .flat_map(move |dist| Pos::try_from(pos + del * dist))
                     .map(move |pos| {
                         let victim = self.board.get(pos).ok();
@@ -205,9 +205,8 @@ impl Board {
                         cap
                     })
                     .flat_map(move |(diff, _)| diff)
-                    .fuse(),
-            )
-        }
+                    .fuse()
+            });
 
         match pt {
             PieceType::Pawn => {}
