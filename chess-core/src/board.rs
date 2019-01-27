@@ -23,7 +23,7 @@ pub enum DiffType {
 pub struct Diff {
     ty: DiffType,
     from: Pos,
-    to: Pos
+    to: Pos,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -31,7 +31,7 @@ pub enum GameCondition {
     Safe,
     Stale,
     Check,
-    Mate
+    Mate,
 }
 
 impl Pos {
@@ -171,14 +171,18 @@ impl Board {
      * gets all possible moves, don't check if the king will be put in check
      */
     #[allow(clippy::single_match)]
-    pub fn get_possible_moves_unchecked<'a>(&'a self, pos: Pos) -> Option<impl 'a + Iterator<Item = Diff>> {
+    pub fn get_possible_moves_unchecked<'a>(
+        &'a self,
+        pos: Pos,
+    ) -> Option<impl 'a + Iterator<Item = Diff>> {
         let (pt, color) = self.board.get(pos).ok()?;
         let old_pos = pos;
         let pos = pos.into();
         let dir = color.dir();
 
         let moves = pt.get_moves();
-        let moves = moves.iter()
+        let moves = moves
+            .iter()
             .map(move |&VMove(_, del, ty, dist)| {
                 let del = del * dir;
                 (del, ty, dist as i32)
@@ -196,9 +200,7 @@ impl Board {
                                 Some(Diff {
                                     from: old_pos,
                                     to: pos,
-                                    ty: DiffType::Capture {
-                                        cap: pos
-                                    }
+                                    ty: DiffType::Capture { cap: pos },
                                 })
                             } else {
                                 None
@@ -240,7 +242,7 @@ impl Board {
         match ty {
             DiffType::Move => {
                 let (piece, color) = self.board.remove(from).ok_or(Error::NoPiece)?;
-                
+
                 if self.board.get(to).is_ok() {
                     Err(InvalidDiff::CaptureOnMoveTy)?;
                 }
@@ -249,11 +251,11 @@ impl Board {
             }
             DiffType::Capture { cap } => {
                 let (piece, color) = self.board.remove(from).ok_or(Error::NoPiece)?;
-                
+
                 if self.board.replace(cap, None).is_none() {
                     Err(InvalidDiff::MoveOnCaptureTy)?;
                 }
-                
+
                 self.board.set(to, piece, color);
             }
             DiffType::Promote { piece } => {
@@ -269,9 +271,9 @@ impl Board {
                         } else {
                             Err(InvalidDiff::InvalidPromotionRow)?
                         }
-                    },
+                    }
                     Some(_) => Err(InvalidDiff::InvalidPromotionPiece)?,
-                    None => Err(Error::NoPiece)?
+                    None => Err(Error::NoPiece)?,
                 }
             }
         }
@@ -284,10 +286,12 @@ impl Board {
      * i.e. is being attacked by an enemy piece
      */
     fn is_king_check(&self, color: Color) -> bool {
-        self.board.iter()
+        self.board
+            .iter()
             .filter(move |(_, _, c)| c != &color)
             .flat_map(move |(pos, _, _)| {
-                self.get_possible_moves_unchecked(pos).unwrap()
+                self.get_possible_moves_unchecked(pos)
+                    .unwrap()
                     .flat_map(move |Diff { to, .. }| self.get(to))
             })
             .any(move |(pt, c)| pt == PieceType::King && c == color)
@@ -295,20 +299,20 @@ impl Board {
 
     /**
      * This checks the condition of the game
-     * 
+     *
      * Check => King is being attacked, but can escape or remove the attacker
      * Mate => King is being attacked with no way to stop it
      * Safe => King is not being attacked, and some piece of the given color can move
      * Stale => King is not being attacked, and no piece of the given color can move
      */
     pub fn game_condition(&self, color: Color) -> GameCondition {
-        let has_moves = self.board.iter()
-                .filter(move |(_, _, c)| c == &color)
-                .flat_map(move |(pos, _, _)| {
-                    self.get_possible_moves(pos).unwrap()
-                })
-                .any(move |_| true);
-        
+        let has_moves = self
+            .board
+            .iter()
+            .filter(move |(_, _, c)| c == &color)
+            .flat_map(move |(pos, _, _)| self.get_possible_moves(pos).unwrap())
+            .any(move |_| true);
+
         let is_king_check = self.is_king_check(color);
 
         match (is_king_check, has_moves) {
@@ -336,16 +340,16 @@ mod fmt {
                 for &tile in col {
                     match tile {
                         Some((pt, _)) => write!(f, "{}. ", pt.get_ident())?,
-                        None => write!(f, "__ ")?
+                        None => write!(f, "__ ")?,
                     }
                 }
-                
+
                 writeln!(f)?;
 
                 for &tile in col {
                     match tile {
                         Some((_, color)) => write!(f, ".{} ", color.get_ident())?,
-                        None => write!(f, "__ ")?
+                        None => write!(f, "__ ")?,
                     }
                 }
 
@@ -362,11 +366,18 @@ mod test {
     use crate::board::*;
 
     macro_rules! pos {
-        ($x:expr, $y:expr) => { Pos::new_unchecked($x, $y) };
+        ($x:expr, $y:expr) => {
+            Pos::new_unchecked($x, $y)
+        };
     }
 
     macro_rules! poss_move_u {
-        ($board:expr, $x:expr, $y:expr) => { $board.get_possible_moves_unchecked(pos!($x, $y)).unwrap().collect::<Vec<_>>() };
+        ($board:expr, $x:expr, $y:expr) => {
+            $board
+                .get_possible_moves_unchecked(pos!($x, $y))
+                .unwrap()
+                .collect::<Vec<_>>()
+        };
     }
 
     macro_rules! make_board {
@@ -395,8 +406,16 @@ mod test {
         let moves = poss_move_u!(board, 0, 1);
 
         assert_eq!(moves.len(), 2);
-        assert!(moves.contains(&Diff { ty: DiffType::Move, from: pos!(0, 1), to: pos!(0, 2) }));
-        assert!(moves.contains(&Diff { ty: DiffType::Move, from: pos!(0, 1), to: pos!(0, 3) }));
+        assert!(moves.contains(&Diff {
+            ty: DiffType::Move,
+            from: pos!(0, 1),
+            to: pos!(0, 2)
+        }));
+        assert!(moves.contains(&Diff {
+            ty: DiffType::Move,
+            from: pos!(0, 1),
+            to: pos!(0, 3)
+        }));
     }
 
     #[test]
@@ -406,8 +425,16 @@ mod test {
         let moves = poss_move_u!(board, 1, 0);
 
         assert_eq!(moves.len(), 2);
-        assert!(moves.contains(&Diff { ty: DiffType::Move, from: pos!(1, 0), to: pos!(0, 2) }));
-        assert!(moves.contains(&Diff { ty: DiffType::Move, from: pos!(1, 0), to: pos!(2, 2) }));
+        assert!(moves.contains(&Diff {
+            ty: DiffType::Move,
+            from: pos!(1, 0),
+            to: pos!(0, 2)
+        }));
+        assert!(moves.contains(&Diff {
+            ty: DiffType::Move,
+            from: pos!(1, 0),
+            to: pos!(2, 2)
+        }));
     }
 
     #[test]
@@ -426,8 +453,6 @@ mod test {
         let moves = poss_move_u!(board, 4, 0);
         assert!(moves.is_empty());
     }
-
-    
 
     #[test]
     fn gc_pass_1() {
@@ -450,7 +475,9 @@ mod test {
 
     #[test]
     fn gc_pass_3() {
-        let mut board = RawBoard { data: [[None; 8]; 8] };
+        let mut board = RawBoard {
+            data: [[None; 8]; 8],
+        };
 
         board.data[0][0] = Some((PieceType::King, Color::White));
         board.data[1][0] = Some((PieceType::Pawn, Color::Black));
