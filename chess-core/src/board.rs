@@ -149,6 +149,10 @@ impl Board {
         self.board.get(pos)
     }
 
+    /**
+     * gets all possible moves for the selected piece, check if
+     * the king will be put in check and if so, that move will be skipped
+     */
     pub fn get_possible_moves<'a>(&'a self, pos: Pos) -> Option<impl 'a + Iterator<Item = Diff>> {
         let (_, color) = self.board.get(pos).ok()?;
 
@@ -229,6 +233,9 @@ impl Board {
         Some(moves)
     }
 
+    /**
+     * Checks and applies a Diff to the current state of the Board
+     */
     pub fn apply(&mut self, Diff { ty, from, to }: Diff) -> Result<(), Error> {
         match ty {
             DiffType::Move => {
