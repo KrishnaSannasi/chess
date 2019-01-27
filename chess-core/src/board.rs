@@ -26,6 +26,14 @@ pub struct Diff {
     to: Pos
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GameCondition {
+    Safe,
+    Stale,
+    Check,
+    Mate
+}
+
 impl Pos {
     pub fn new_unchecked(x: usize, y: usize) -> Self {
         Self(x, y)
@@ -76,7 +84,7 @@ impl RawBoard {
         self.data.iter().enumerate().flat_map(move |(x, col)| {
             col.iter()
                 .enumerate()
-                .flat_map(move |(y, &piece)| Some((Pos(x, y), piece?)))
+                .flat_map(move |(y, &piece)| Some((Pos(y, x), piece?)))
                 .map(move |(pos, (pt, color))| (pos, pt, color))
         })
     }
@@ -87,7 +95,7 @@ impl RawBoard {
         self.data.iter_mut().enumerate().flat_map(move |(x, col)| {
             col.iter_mut()
                 .enumerate()
-                .flat_map(move |(y, piece)| Some((Pos(x, y), piece.as_mut()?)))
+                .flat_map(move |(y, piece)| Some((Pos(y, x), piece.as_mut()?)))
                 .map(move |(pos, (pt, color))| (pos, pt, color))
         })
     }
@@ -130,6 +138,10 @@ impl Board {
             board.set(Pos(i, 6), PieceType::Pawn, Color::Black);
         }
 
+        Self { board }
+    }
+
+    pub fn with(board: RawBoard) -> Self {
         Self { board }
     }
 
@@ -260,8 +272,44 @@ impl Board {
         Ok(())
     }
 
+    /**
+     * This checks if the king of the given color is in check,
+     * i.e. is being attacked by an enemy piece
+     */
     fn is_king_check(&self, color: Color) -> bool {
-        false
+        self.board.iter()
+            .filter(move |(_, _, c)| c != &color)
+            .flat_map(move |(pos, _, _)| {
+                self.get_possible_moves_unchecked(pos).unwrap()
+                    .flat_map(move |Diff { to, .. }| self.get(to))
+            })
+            .any(move |(pt, c)| pt == PieceType::King && c == color)
+    }
+
+    /**
+     * This checks the condition of the game
+     * 
+     * Check => King is being attacked, but can escape or remove the attacker
+     * Mate => King is being attacked with no way to stop it
+     * Safe => King is not being attacked, and some piece of the given color can move
+     * Stale => King is not being attacked, and no piece of the given color can move
+     */
+    pub fn game_condition(&self, color: Color) -> GameCondition {
+        let has_moves = self.board.iter()
+                .filter(move |(_, _, c)| c == &color)
+                .flat_map(move |(pos, _, _)| {
+                    self.get_possible_moves(pos).unwrap()
+                })
+                .any(move |_| true);
+        
+        let is_king_check = self.is_king_check(color);
+
+        match (is_king_check, has_moves) {
+            (true, true) => GameCondition::Check,
+            (true, false) => GameCondition::Mate,
+            (false, true) => GameCondition::Safe,
+            (false, false) => GameCondition::Stale,
+        }
     }
 }
 
@@ -314,6 +362,25 @@ mod test {
         ($board:expr, $x:expr, $y:expr) => { $board.get_possible_moves_unchecked(pos!($x, $y)).unwrap().collect::<Vec<_>>() };
     }
 
+    macro_rules! make_board {
+        (
+            $(($($rest:tt)*))*
+        ) => {{
+            #[allow(unused_mut)]
+            let mut board = RawBoard { data: [[None; 8]; 8] };
+
+            $(
+                make_board!(@internal board $($rest)*);
+            )*
+
+            dbg!(Board::with(board))
+        }};
+
+        (@internal $board:ident ($x:expr, $y:expr) $color:ident $piece:ident) => {
+            $board.set(Pos($x, $y), PieceType::$piece, Color::$color);
+        };
+    }
+
     #[test]
     fn gpmu_pass_1() {
         let board = Board::new();
@@ -351,5 +418,100 @@ mod test {
 
         let moves = poss_move_u!(board, 4, 0);
         assert!(moves.is_empty());
+    }
+
+    
+
+    #[test]
+    fn gc_pass_1() {
+        let board = make_board!();
+
+        assert!(!board.is_king_check(Color::White));
+        assert!(!board.is_king_check(Color::Black));
+    }
+
+    #[test]
+    fn gc_pass_2() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 2) Black Rook)
+        );
+
+        assert!(board.is_king_check(Color::White));
+        assert!(!board.is_king_check(Color::Black));
+    }
+
+    #[test]
+    fn gc_pass_3() {
+        let mut board = RawBoard { data: [[None; 8]; 8] };
+
+        board.data[0][0] = Some((PieceType::King, Color::White));
+        board.data[1][0] = Some((PieceType::Pawn, Color::Black));
+        board.data[7][0] = Some((PieceType::Rook, Color::Black));
+
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 1) Black Pawn)
+            ((0, 7) Black Rook)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Safe);
+    }
+
+    #[test]
+    fn gc_pass_4() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 1) White Pawn)
+            ((0, 7) Black Rook)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Safe);
+    }
+
+    #[test]
+    fn gc_pass_5() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 1) White Pawn)
+            ((0, 7) Black Rook)
+            ((1, 7) Black Queen)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Safe);
+    }
+
+    #[test]
+    fn gc_pass_6() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 7) Black Rook)
+            ((1, 7) Black Queen)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Mate);
+    }
+
+    #[test]
+    fn gc_pass_7() {
+        let board = make_board!(
+            ((1, 0) White King)
+            ((0, 7) Black Rook)
+            ((1, 7) Black Queen)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Check);
+    }
+
+    #[test]
+    fn gc_pass_8() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 7) White Queen)
+            ((0, 6) Black Rook)
+            ((1, 6) Black Rook)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Check);
     }
 }
