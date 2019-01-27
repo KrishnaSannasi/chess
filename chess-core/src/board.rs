@@ -26,6 +26,14 @@ pub struct Diff {
     to: Pos
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GameCondition {
+    Safe,
+    Stale,
+    Check,
+    Mate
+}
+
 impl Pos {
     pub fn new_unchecked(x: usize, y: usize) -> Self {
         Self(x, y)
@@ -272,6 +280,24 @@ impl Board {
                     .flat_map(move |Diff { to, .. }| self.get(to))
             })
             .any(move |(pt, c)| pt == PieceType::King && c == color)
+    }
+
+    pub fn game_condition(&self, color: Color) -> GameCondition {
+        let has_moves = self.board.iter()
+                .filter(move |(_, _, c)| c == &color)
+                .flat_map(move |(pos, _, _)| {
+                    self.get_possible_moves(pos).unwrap()
+                })
+                .any(move |_| true);
+        
+        let is_king_check = self.is_king_check(color);
+
+        match (is_king_check, has_moves) {
+            (true, true) => GameCondition::Check,
+            (true, false) => GameCondition::Mate,
+            (false, true) => GameCondition::Safe,
+            (false, false) => GameCondition::Stale,
+        }
     }
 }
 
