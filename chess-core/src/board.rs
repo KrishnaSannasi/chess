@@ -272,6 +272,10 @@ impl Board {
         Ok(())
     }
 
+    /**
+     * This checks if the king of the given color is in check,
+     * i.e. is being attacked by an enemy piece
+     */
     fn is_king_check(&self, color: Color) -> bool {
         self.board.iter()
             .filter(move |(_, _, c)| c != &color)
@@ -282,6 +286,14 @@ impl Board {
             .any(move |(pt, c)| pt == PieceType::King && c == color)
     }
 
+    /**
+     * This checks the condition of the game
+     * 
+     * Check => King is being attacked, but can escape or remove the attacker
+     * Mate => King is being attacked with no way to stop it
+     * Safe => King is not being attacked, and some piece of the given color can move
+     * Stale => King is not being attacked, and no piece of the given color can move
+     */
     pub fn game_condition(&self, color: Color) -> GameCondition {
         let has_moves = self.board.iter()
                 .filter(move |(_, _, c)| c == &color)
