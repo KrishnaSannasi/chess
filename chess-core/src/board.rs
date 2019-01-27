@@ -76,7 +76,7 @@ impl RawBoard {
         self.data.iter().enumerate().flat_map(move |(x, col)| {
             col.iter()
                 .enumerate()
-                .flat_map(move |(y, &piece)| Some((Pos(x, y), piece?)))
+                .flat_map(move |(y, &piece)| Some((Pos(y, x), piece?)))
                 .map(move |(pos, (pt, color))| (pos, pt, color))
         })
     }
@@ -87,7 +87,7 @@ impl RawBoard {
         self.data.iter_mut().enumerate().flat_map(move |(x, col)| {
             col.iter_mut()
                 .enumerate()
-                .flat_map(move |(y, piece)| Some((Pos(x, y), piece.as_mut()?)))
+                .flat_map(move |(y, piece)| Some((Pos(y, x), piece.as_mut()?)))
                 .map(move |(pos, (pt, color))| (pos, pt, color))
         })
     }
@@ -130,6 +130,10 @@ impl Board {
             board.set(Pos(i, 6), PieceType::Pawn, Color::Black);
         }
 
+        Self { board }
+    }
+
+    pub fn with(board: RawBoard) -> Self {
         Self { board }
     }
 
@@ -261,7 +265,13 @@ impl Board {
     }
 
     fn is_king_check(&self, color: Color) -> bool {
-        false
+        self.board.iter()
+            .filter(move |(_, _, c)| c != &color)
+            .flat_map(move |(pos, _, _)| {
+                self.get_possible_moves_unchecked(pos).unwrap()
+                    .flat_map(move |Diff { to, .. }| self.get(to))
+            })
+            .any(move |(pt, c)| pt == PieceType::King && c == color)
     }
 }
 
