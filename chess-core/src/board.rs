@@ -350,6 +350,25 @@ mod test {
         ($board:expr, $x:expr, $y:expr) => { $board.get_possible_moves_unchecked(pos!($x, $y)).unwrap().collect::<Vec<_>>() };
     }
 
+    macro_rules! make_board {
+        (
+            $(($($rest:tt)*))*
+        ) => {{
+            #[allow(unused_mut)]
+            let mut board = RawBoard { data: [[None; 8]; 8] };
+
+            $(
+                make_board!(@internal board $($rest)*);
+            )*
+
+            dbg!(Board::with(board))
+        }};
+
+        (@internal $board:ident ($x:expr, $y:expr) $color:ident $piece:ident) => {
+            $board.set(Pos($x, $y), PieceType::$piece, Color::$color);
+        };
+    }
+
     #[test]
     fn gpmu_pass_1() {
         let board = Board::new();
@@ -387,5 +406,100 @@ mod test {
 
         let moves = poss_move_u!(board, 4, 0);
         assert!(moves.is_empty());
+    }
+
+    
+
+    #[test]
+    fn gc_pass_1() {
+        let board = make_board!();
+
+        assert!(!board.is_king_check(Color::White));
+        assert!(!board.is_king_check(Color::Black));
+    }
+
+    #[test]
+    fn gc_pass_2() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 2) Black Rook)
+        );
+
+        assert!(board.is_king_check(Color::White));
+        assert!(!board.is_king_check(Color::Black));
+    }
+
+    #[test]
+    fn gc_pass_3() {
+        let mut board = RawBoard { data: [[None; 8]; 8] };
+
+        board.data[0][0] = Some((PieceType::King, Color::White));
+        board.data[1][0] = Some((PieceType::Pawn, Color::Black));
+        board.data[7][0] = Some((PieceType::Rook, Color::Black));
+
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 1) Black Pawn)
+            ((0, 7) Black Rook)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Safe);
+    }
+
+    #[test]
+    fn gc_pass_4() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 1) White Pawn)
+            ((0, 7) Black Rook)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Safe);
+    }
+
+    #[test]
+    fn gc_pass_5() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 1) White Pawn)
+            ((0, 7) Black Rook)
+            ((1, 7) Black Queen)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Safe);
+    }
+
+    #[test]
+    fn gc_pass_6() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 7) Black Rook)
+            ((1, 7) Black Queen)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Mate);
+    }
+
+    #[test]
+    fn gc_pass_7() {
+        let board = make_board!(
+            ((1, 0) White King)
+            ((0, 7) Black Rook)
+            ((1, 7) Black Queen)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Check);
+    }
+
+    #[test]
+    fn gc_pass_8() {
+        let board = make_board!(
+            ((0, 0) White King)
+            ((0, 7) White Queen)
+            ((0, 6) Black Rook)
+            ((1, 6) Black Rook)
+        );
+
+        assert_eq!(board.game_condition(Color::White), GameCondition::Check);
     }
 }
